@@ -14,77 +14,15 @@ const GROUP_COLORS = {
     default: '#ccc'
 };
 
-const ProfessionalView = () => {
-    const [graphData, setGraphData] = useState({ nodes: [], links: [] });
-    const [loading, setLoading] = useState(true);
-    const [selectedNode, setSelectedNode] = useState(null);
-    const [connectionLegend, setConnectionLegend] = useState([]);
-
-    // Fetch data from Supabase
-    const fetchGraphData = useCallback(async () => {
-        try {
-            setLoading(true);
-
-            // Fetch nodes
-            const { data: nodesData, error: nodesError } = await supabase
-                .from('nodes')
-                .select('*');
-
-            if (nodesError) throw nodesError;
-
-            // Fetch edges
-            const { data: edgesData, error: edgesError } = await supabase
-                .from('edges')
-                .select('*');
-
-            if (edgesError) throw edgesError;
-
-            const nodes = nodesData.map(node => ({ ...node }));
-            const links = edgesData;
-
-            // Build connection legend
-            const COLOR_MEANINGS = {
-                'orange': 'Political Alliance',
-                'green': 'Opposition Network',
-                'blue': 'Business Connection',
-                'red': 'Rivalry',
-                'purple': 'Family Relation',
-                'grey': 'Strategic/Advisory',
-                'gray': 'Strategic/Advisory',
-                'brown': 'Ideological'
-            };
-
-            const colorCounts = {};
-            edgesData.forEach(link => {
-                const color = link.color || '#999';
-                if (!colorCounts[color]) {
-                    const colorName = COLOR_MEANINGS[color.toLowerCase()] ||
-                        color.charAt(0).toUpperCase() + color.slice(1).toLowerCase();
-                    colorCounts[color] = { color, type: colorName, count: 0 };
-                }
-                colorCounts[color].count++;
-            });
-
-            const sortedTypes = Object.values(colorCounts).sort((a, b) => b.count - a.count);
-            const legendEntries = sortedTypes.slice(0, 5).map(t => ({ color: t.color, type: t.type, count: t.count }));
-
-            const othersCount = sortedTypes.slice(5).reduce((sum, t) => sum + t.count, 0);
-            if (othersCount > 0) {
-                legendEntries.push({ color: '#666666', type: 'Others', count: othersCount });
-            }
-
-            setConnectionLegend(legendEntries);
-            setGraphData({ nodes, links });
-        } catch (error) {
-            console.error('Error fetching graph data:', error);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchGraphData();
-    }, [fetchGraphData]);
+    // We can just alias it to graphData to minimize changes, 
+    // or destructure directly. Let's alias.
+const ProfessionalView = ({ data, loading, legend }) => {
+    const graphData = data || { nodes: [], links: [] };
+    const selectedNodeState = useState(null);
+    const [selectedNode, setSelectedNode] = selectedNodeState; 
+    
+    // Alias prop to local variable name used in JSX
+    const connectionLegend = legend || [];
 
     if (loading) {
         return <div className="loading-container">Loading Professional View...</div>;
@@ -201,7 +139,6 @@ const ProfessionalView = () => {
                                 background: 'white',
                                 borderRadius: '15px',
                                 overflow: 'hidden',
-                                boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
                                 transition: 'all 0.3s ease',
                                 cursor: 'pointer',
                                 border: `3px solid ${groupColor}`,

@@ -13,122 +13,29 @@ const GROUP_COLORS = {
     default: '#ccc'
 };
 
-const MemeView = () => {
+const MemeView = ({ data, loading, legend }) => {
     const [graphData, setGraphData] = useState({ nodes: [], links: [] });
-    const [loading, setLoading] = useState(true);
     const [selectedNode, setSelectedNode] = useState(null);
-    const [connectionLegend, setConnectionLegend] = useState([]);
+    // connectionLegend is now passed as prop 'legend'
     const fgRef = useRef();
 
-    // Fetch data from Supabase
-    const fetchGraphData = useCallback(async () => {
-        try {
-            setLoading(true);
-
-            // Fetch nodes
-            const { data: nodesData, error: nodesError } = await supabase
-                .from('nodes')
-                .select('*');
-
-            if (nodesError) throw nodesError;
-
-            // Fetch edges
-            const { data: edgesData, error: edgesError } = await supabase
-                .from('edges')
-                .select('*');
-
-            if (edgesError) throw edgesError;
-
-            // Transform data
-            // react-force-graph expects mutable objects, so we clone
-            const nodes = nodesData.map(node => ({ ...node }));
-
-            // Define meaningful names for different connection colors
-            const COLOR_MEANINGS = {
-                'orange': 'Political Alliance',
-                'green': 'Opposition Network',
-                'blue': 'Business Connection',
-                'red': 'Rivalry',
-                'purple': 'Family Relation',
-                'grey': 'Strategic/Advisory',
-                'gray': 'Strategic/Advisory',
-                'brown': 'Ideological'
-            };
-
-            // Count connections by color
-            const colorCounts = {};
-            edgesData.forEach(link => {
-                const color = link.color || '#999';
-
-                if (!colorCounts[color]) {
-                    // Get a meaningful name for this color
-                    const colorName = COLOR_MEANINGS[color.toLowerCase()] ||
-                        color.charAt(0).toUpperCase() + color.slice(1).toLowerCase();
-
-                    colorCounts[color] = {
-                        color,
-                        type: colorName,
-                        count: 0
-                    };
-                }
-                colorCounts[color].count++;
-            });
-
-            // Sort by count and get top 5
-            const sortedTypes = Object.values(colorCounts)
-                .sort((a, b) => b.count - a.count);
-
-            const top5Colors = new Set(sortedTypes.slice(0, 5).map(t => t.color));
-            const othersColor = '#666666';
-
-            // Create legend entries
-            const legendEntries = sortedTypes.slice(0, 5).map(t => ({
-                color: t.color,
-                type: t.type,
-                count: t.count
-            }));
-
-            // Calculate "others" count
-            const othersCount = sortedTypes
-                .slice(5)
-                .reduce((sum, t) => sum + t.count, 0);
-
-            if (othersCount > 0) {
-                legendEntries.push({
-                    color: othersColor,
-                    type: 'Others',
-                    count: othersCount
-                });
-            }
-
-            setConnectionLegend(legendEntries);
-
-            // Update links with top 5 colors or "others"
-            const links = edgesData.map(link => {
-                const originalColor = link.color || '#999';
-                const finalColor = top5Colors.has(originalColor) ? originalColor : othersColor;
-
-                return {
-                    ...link,
-                    source: link.source,
-                    target: link.target,
-                    color: finalColor,
-                    originalColor: originalColor,
-                    originalType: link.type
-                };
-            });
-
-            setGraphData({ nodes, links });
-        } catch (error) {
-            console.error('Error fetching graph data:', error);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
     useEffect(() => {
-        fetchGraphData();
-    }, [fetchGraphData]);
+        if (data && data.nodes.length > 0) {
+            // react-force-graph expects mutable objects, so we clone strictly for this view
+            const nodes = data.nodes.map(node => ({ ...node }));
+            const links = data.links.map(link => ({
+                ...link,
+                // Ensure source/target match node IDs (if they were already objects from previous render, reset to IDs if needed, 
+                // but MainApp passes raw IDs or processed objects? MainApp passes processed objects but source/target are likely still IDs unless processed.
+                // MainApp just mapped edgesData. So source/target are IDs/Strings.
+                // However, if we switch views, we are getting fresh props from MainApp.
+                source: link.source, 
+                target: link.target
+            }));
+            
+            setGraphData({ nodes, links });
+        }
+    }, [data]);
 
     // Node Object Customization (Sphere + Text)
     const nodeThreeObject = useCallback((node) => {
@@ -237,7 +144,7 @@ const MemeView = () => {
             </div>
 
             {/* Connection Legend */}
-            {connectionLegend.length > 0 && (
+            {legend.length > 0 && (
                 <div style={{
                     position: 'absolute',
                     top: '110px',
@@ -259,7 +166,7 @@ const MemeView = () => {
                         Connection Types
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {connectionLegend.map((entry, idx) => (
+                        {legend.map((entry, idx) => (
                             <div
                                 key={idx}
                                 style={{
