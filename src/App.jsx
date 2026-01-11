@@ -43,35 +43,39 @@ const App = () => {
             // react-force-graph expects mutable objects, so we clone
             const nodes = nodesData.map(node => ({ ...node }));
 
-            // Count connection types by relation type
-            const typeCounts = {};
+            // Define meaningful names for different connection colors
+            const COLOR_MEANINGS = {
+                'orange': 'Political Alliance',
+                'green': 'Opposition Network',
+                'blue': 'Business Connection',
+                'red': 'Rivalry',
+                'purple': 'Family Relation',
+                'grey': 'Strategic/Advisory',
+                'gray': 'Strategic/Advisory',
+                'brown': 'Ideological'
+            };
+
+            // Count connections by color
+            const colorCounts = {};
             edgesData.forEach(link => {
                 const color = link.color || '#999';
-                // Get relation from database - the field is called 'relation'
-                let relationType = link.relation || link.relation_type || link.relationship || link.type || null;
 
-                // If we still don't have a type name, don't use color as fallback
-                if (!relationType || relationType.startsWith('#')) {
-                    relationType = 'Unnamed Connection';
-                }
+                if (!colorCounts[color]) {
+                    // Get a meaningful name for this color
+                    const colorName = COLOR_MEANINGS[color.toLowerCase()] ||
+                        color.charAt(0).toUpperCase() + color.slice(1).toLowerCase();
 
-                const key = `${relationType}`;
-
-                if (!typeCounts[key]) {
-                    typeCounts[key] = {
+                    colorCounts[color] = {
                         color,
-                        type: relationType,
+                        type: colorName,
                         count: 0
                     };
-                } else {
-                    // If same relation type but different color, keep the first color seen
-                    // Or you could track multiple colors per type
                 }
-                typeCounts[key].count++;
+                colorCounts[color].count++;
             });
 
             // Sort by count and get top 5
-            const sortedTypes = Object.values(typeCounts)
+            const sortedTypes = Object.values(colorCounts)
                 .sort((a, b) => b.count - a.count);
 
             const top5Colors = new Set(sortedTypes.slice(0, 5).map(t => t.color));
