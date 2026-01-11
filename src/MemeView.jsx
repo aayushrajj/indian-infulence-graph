@@ -13,7 +13,7 @@ const GROUP_COLORS = {
     default: '#ccc'
 };
 
-const App = () => {
+const MemeView = () => {
     const [graphData, setGraphData] = useState({ nodes: [], links: [] });
     const [loading, setLoading] = useState(true);
     const [selectedNode, setSelectedNode] = useState(null);
@@ -327,4 +327,4 @@ const App = () => {
     );
 }
 
-export default App;
+export default MemeView;
