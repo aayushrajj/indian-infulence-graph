@@ -17,6 +17,7 @@ const App = () => {
     const [graphData, setGraphData] = useState({ nodes: [], links: [] });
     const [loading, setLoading] = useState(true);
     const [selectedNode, setSelectedNode] = useState(null);
+    const [connectionLegend, setConnectionLegend] = useState([]);
     const fgRef = useRef();
 
     // Fetch data from Supabase
@@ -41,12 +42,77 @@ const App = () => {
             // Transform data
             // react-force-graph expects mutable objects, so we clone
             const nodes = nodesData.map(node => ({ ...node }));
-            const links = edgesData.map(link => ({
-                ...link,
-                // Ensure source/target match node IDs
-                source: link.source,
-                target: link.target
+
+            // Count connection types by relation type
+            const typeCounts = {};
+            edgesData.forEach(link => {
+                const color = link.color || '#999';
+                // Get relation from database - the field is called 'relation'
+                let relationType = link.relation || link.relation_type || link.relationship || link.type || null;
+
+                // If we still don't have a type name, don't use color as fallback
+                if (!relationType || relationType.startsWith('#')) {
+                    relationType = 'Unnamed Connection';
+                }
+
+                const key = `${relationType}`;
+
+                if (!typeCounts[key]) {
+                    typeCounts[key] = {
+                        color,
+                        type: relationType,
+                        count: 0
+                    };
+                } else {
+                    // If same relation type but different color, keep the first color seen
+                    // Or you could track multiple colors per type
+                }
+                typeCounts[key].count++;
+            });
+
+            // Sort by count and get top 5
+            const sortedTypes = Object.values(typeCounts)
+                .sort((a, b) => b.count - a.count);
+
+            const top5Colors = new Set(sortedTypes.slice(0, 5).map(t => t.color));
+            const othersColor = '#666666';
+
+            // Create legend entries
+            const legendEntries = sortedTypes.slice(0, 5).map(t => ({
+                color: t.color,
+                type: t.type,
+                count: t.count
             }));
+
+            // Calculate "others" count
+            const othersCount = sortedTypes
+                .slice(5)
+                .reduce((sum, t) => sum + t.count, 0);
+
+            if (othersCount > 0) {
+                legendEntries.push({
+                    color: othersColor,
+                    type: 'Others',
+                    count: othersCount
+                });
+            }
+
+            setConnectionLegend(legendEntries);
+
+            // Update links with top 5 colors or "others"
+            const links = edgesData.map(link => {
+                const originalColor = link.color || '#999';
+                const finalColor = top5Colors.has(originalColor) ? originalColor : othersColor;
+
+                return {
+                    ...link,
+                    source: link.source,
+                    target: link.target,
+                    color: finalColor,
+                    originalColor: originalColor,
+                    originalType: link.type
+                };
+            });
 
             setGraphData({ nodes, links });
         } catch (error) {
@@ -135,6 +201,13 @@ const App = () => {
                 // Interaction
                 onNodeClick={handleNodeClick}
 
+                // Physics / Force parameters to increase node spacing
+                d3AlphaDecay={0.01}
+                d3VelocityDecay={0.2}
+                cooldownTicks={200}
+                numDimensions={3}
+                dagMode={null}
+
                 // Scene config
                 backgroundColor="#000000"
                 showNavInfo={false}
@@ -158,6 +231,60 @@ const App = () => {
                     Interactive Network Visualization
                 </p>
             </div>
+
+            {/* Connection Legend */}
+            {connectionLegend.length > 0 && (
+                <div style={{
+                    position: 'absolute',
+                    top: '110px',
+                    left: '20px',
+                    color: 'white',
+                    background: 'rgba(0,0,0,0.7)',
+                    padding: '15px',
+                    borderRadius: '8px',
+                    pointerEvents: 'none',
+                    maxWidth: '250px'
+                }}>
+                    <h3 style={{
+                        margin: '0 0 10px 0',
+                        fontSize: '1rem',
+                        fontWeight: 600,
+                        borderBottom: '1px solid rgba(255,255,255,0.2)',
+                        paddingBottom: '8px'
+                    }}>
+                        Connection Types
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {connectionLegend.map((entry, idx) => (
+                            <div
+                                key={idx}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    fontSize: '0.85rem'
+                                }}
+                            >
+                                <div style={{
+                                    width: '20px',
+                                    height: '3px',
+                                    backgroundColor: entry.color,
+                                    borderRadius: '2px',
+                                    flexShrink: 0
+                                }} />
+                                <span style={{ flex: 1 }}>{entry.type}</span>
+                                <span style={{
+                                    opacity: 0.7,
+                                    fontSize: '0.75rem',
+                                    fontWeight: 500
+                                }}>
+                                    ({entry.count})
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Detail Modal */}
             {selectedNode && (
