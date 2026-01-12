@@ -103,7 +103,7 @@ const MemeView = ({ data, loading, legend }) => {
                 nodeLabel="name"
 
                 // Link Styling
-                linkColor={(link) => link.color || '#999'}
+                linkColor={(link) => link.originalColor || link.color || '#999'}
                 linkWidth={1}
                 linkDirectionalParticles={2}
                 linkDirectionalParticleSpeed={0.005}

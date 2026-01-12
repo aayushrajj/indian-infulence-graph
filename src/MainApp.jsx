@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import MemeView from './MemeView';
 import ProfessionalView from './ProfessionalView';
+import CrimeBoardView from './CrimeBoardView';
 import { supabase } from './supabaseClient';
 
 const MainApp = () => {
@@ -165,7 +166,23 @@ const MainApp = () => {
                         fontSize: '14px'
                     }}
                 >
-                    💼 Professional View (2D)
+                    💼 Professional
+                </button>
+                <button
+                    onClick={() => setViewMode('crime')}
+                    style={{
+                        background: viewMode === 'crime' ? '#795548' : 'transparent',
+                        color: 'white',
+                        border: 'none',
+                        padding: '10px 20px',
+                        borderRadius: '20px',
+                        cursor: 'pointer',
+                        fontWeight: viewMode === 'crime' ? 'bold' : 'normal',
+                        transition: 'all 0.3s ease',
+                        fontSize: '14px'
+                    }}
+                >
+                    🕵️ Crime Board
                 </button>
             </div>
 
@@ -176,11 +193,17 @@ const MainApp = () => {
                     loading={loading} 
                     legend={connectionLegend} 
                 />
-            ) : (
+            ) : viewMode === 'professional' ? (
                 <ProfessionalView 
                     data={graphData} 
                     loading={loading} 
                     legend={connectionLegend} 
+                />
+            ) : (
+                <CrimeBoardView 
+                    data={graphData} 
+                    loading={loading} 
+                    legend={connectionLegend}
                 />
             )}
         </div>
